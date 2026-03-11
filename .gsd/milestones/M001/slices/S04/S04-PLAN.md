@@ -49,7 +49,7 @@
   - Verify: `npx tsx src/resources/extensions/gsd/tests/migrate-writer.test.ts` (79 pass), `npx tsx src/resources/extensions/gsd/tests/migrate-writer-integration.test.ts` (77 pass) — confirms S03 merge didn't break anything. TypeScript compiles without errors.
   - Done when: `handleMigrate` exists, `commands.ts` dispatches to it, tab-completion includes `migrate`, all prior tests pass
 
-- [ ] **T02: Pipeline integration test and full verification** `est:25m`
+- [x] **T02: Pipeline integration test and full verification** `est:25m`
   - Why: Proves the assembled pipeline works end-to-end without the TUI — the command handler's logic (path resolution, validation gating, pipeline orchestration, preview generation, writing) is tested with real fixture data through a temp directory round-trip.
   - Files: `src/resources/extensions/gsd/tests/migrate-command.test.ts` (new)
   - Do: Create `migrate-command.test.ts` that tests: (1) path resolution — `.planning` appended when missing, used as-is when present; (2) validation gating — invalid directory returns fatal issues and blocks pipeline; (3) full pipeline round-trip — parse a fixture `.planning` dir, transform, generate preview, write to temp dir, verify preview stats match expected counts, verify written files exist, verify `deriveState()` on written output returns coherent state; (4) `.gsd/` exists detection. Run all 5 test suites to confirm zero regressions.
