@@ -59,7 +59,7 @@
 
 ## Tasks
 
-- [ ] **T01: Export helpers from files.ts and create types + test scaffold** `est:45m`
+- [x] **T01: Export helpers from files.ts and create types + test scaffold** `est:45m`
   - Why: The parser needs `splitFrontmatter`, `parseFrontmatterMap`, `extractSection`, `extractAllSections`, `parseBullets`, `extractBoldField` from `files.ts`. The types define the contract for the entire parser module. The test file establishes the verification target for the slice.
   - Files: `src/resources/extensions/gsd/files.ts`, `src/resources/extensions/gsd/migrate/types.ts`, `src/resources/extensions/gsd/tests/migrate-parser.test.ts`
   - Do: (1) Add `export` to the 6 helper functions in `files.ts`. (2) Create `migrate/types.ts` with all old-format interfaces. (3) Create `migrate-parser.test.ts` with fixture helpers and all test cases (assertions will fail since parser doesn't exist yet). (4) Verify existing tests still pass after the export change.
