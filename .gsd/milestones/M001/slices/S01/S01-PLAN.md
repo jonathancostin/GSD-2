@@ -66,7 +66,7 @@
   - Verify: `npx tsx src/resources/extensions/gsd/tests/parsers.test.ts` still passes (no regression from exports). Test file exists and runs (expected: all assertions fail).
   - Done when: Types compile, helpers are exported, test file runs without syntax errors, existing tests pass.
 
-- [ ] **T02: Implement validator and per-file parsers** `est:1h`
+- [x] **T02: Implement validator and per-file parsers** `est:1h`
   - Why: The individual file parsers (roadmap, plan XML-in-markdown, summary frontmatter, requirements, PROJECT.md, STATE.md, config.json) are the building blocks the main parser orchestrator calls. The validator is the pre-flight check that reports issues before parsing.
   - Files: `src/resources/extensions/gsd/migrate/validator.ts`, `src/resources/extensions/gsd/migrate/parsers.ts`
   - Do: (1) Implement `validatePlanningDirectory(path): ValidationResult` — checks for directory existence, ROADMAP.md (fatal if missing), PROJECT.md/REQUIREMENTS.md/STATE.md (warning if missing). (2) Implement per-file parsers: `parseOldRoadmap(content)` handles flat and milestone-sectioned formats with `<details>` blocks; `parseOldPlan(content)` extracts XML-in-markdown tags and YAML frontmatter; `parseOldSummary(content)` extracts YAML frontmatter with old schema; `parseOldRequirements(content)` extracts requirement entries; `parseOldProject(content)` extracts project metadata; `parseOldState(content)` extracts state info; `parseOldConfig(json)` parses config.json. All use exported helpers from `files.ts`.
