@@ -156,12 +156,6 @@ export async function runWizardIfNeeded(authStorage: AuthStorage): Promise<void>
     `  These unlock additional tools. All optional — press ${cyan}Enter${reset} to skip any.\n\n`
   )
 
-  // Show what each key unlocks
-  for (const key of missing) {
-    process.stdout.write(`  ${dim}•${reset} ${cyan}${key.label}${reset} ${dim}— ${key.description}${reset}\n`)
-  }
-  process.stdout.write('\n')
-
   // ── Prompts ─────────────────────────────────────────────────────────────────
   let savedCount = 0
 

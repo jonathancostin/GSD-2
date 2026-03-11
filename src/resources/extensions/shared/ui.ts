@@ -266,8 +266,8 @@ export function makeUI(theme: Theme, width: number): UI {
 		optionUnselected: (num, label, description, opts = {}) => {
 			const { isCommitted = false, isFocusDimmed = false } = opts;
 			const marker = isCommitted ? theme.fg("success", ` ${GLYPH.check}`) : "";
-			const labelColor = isFocusDimmed ? "dim" : "text";
-			const descColor  = isFocusDimmed ? "dim" : "muted";
+			const labelColor = isFocusDimmed ? (isCommitted ? "text" : "dim") : "text";
+			const descColor  = isFocusDimmed ? (isCommitted ? "muted" : "dim") : "muted";
 			return [
 				...wrap(`${INDENT.option}  ${theme.fg(labelColor, `${num}. ${label}`)}${marker}`),
 				...wrapIndented(`${INDENT.description}${theme.fg(descColor, description)}`, INDENT.description),
@@ -287,7 +287,7 @@ export function makeUI(theme: Theme, width: number): UI {
 		checkboxUnselected: (label, description, isChecked, isFocusDimmed = false) => {
 			const box = isChecked ? theme.fg("success", GLYPH.checkedBox) : theme.fg("dim", GLYPH.uncheckedBox);
 			const labelColor = isFocusDimmed ? (isChecked ? "text" : "dim") : "text";
-			const descColor  = isFocusDimmed ? "dim" : "muted";
+			const descColor  = isFocusDimmed ? (isChecked ? "muted" : "dim") : "muted";
 			return [
 				add(`${INDENT.option}  ${box} ${theme.fg(labelColor, label)}`),
 				...wrapIndented(`${INDENT.description}${theme.fg(descColor, description)}`, INDENT.description),
