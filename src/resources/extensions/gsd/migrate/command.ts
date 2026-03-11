@@ -80,17 +80,16 @@ export async function handleMigrate(
   args: string,
   ctx: ExtensionCommandContext,
 ): Promise<void> {
-  // ── Guard: empty args ──────────────────────────────────────────────────────
-  if (!args) {
-    ctx.ui.notify(
-      "Usage: /gsd migrate <path-to-project>\n\nPath should point to a project root or its .planning directory.",
-      "warning",
-    );
-    return;
+  // ── Resolve source path ────────────────────────────────────────────────────
+  // Default to cwd when no args given; expand ~ to HOME
+  let rawPath = args.trim() || ".";
+  if (rawPath.startsWith("~/")) {
+    rawPath = join(process.env.HOME ?? "~", rawPath.slice(2));
+  } else if (rawPath === "~") {
+    rawPath = process.env.HOME ?? "~";
   }
 
-  // ── Resolve source path ────────────────────────────────────────────────────
-  let sourcePath = resolve(process.cwd(), args);
+  let sourcePath = resolve(process.cwd(), rawPath);
   if (!sourcePath.endsWith(".planning")) {
     sourcePath = join(sourcePath, ".planning");
   }
