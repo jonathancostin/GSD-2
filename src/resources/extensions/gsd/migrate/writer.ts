@@ -1,7 +1,10 @@
-// GSD Directory Writer — Format Functions
-// Pure string-returning functions that serialize GSD types into the exact markdown
+// GSD Directory Writer — Format Functions & Directory Orchestrator
+// Format functions: pure string-returning functions that serialize GSD types into the exact markdown
 // format that GSD-2's parsers expect (parseRoadmap, parsePlan, parseSummary, parseRequirementCounts).
-// No I/O — each function takes typed data and returns a string.
+// writeGSDDirectory: orchestrator that writes a complete .gsd directory tree from a GSDProject.
+
+import { join } from 'node:path';
+import { saveFile } from '../files.ts';
 
 import type {
   GSDMilestone,
@@ -10,6 +13,44 @@ import type {
   GSDRequirement,
   GSDProject,
 } from './types.ts';
+
+// ─── Types ─────────────────────────────────────────────────────────────────
+
+/** Result of writeGSDDirectory — lists all files that were written. */
+export interface WrittenFiles {
+  /** Absolute paths of all files written */
+  paths: string[];
+  /** Count by category */
+  counts: {
+    roadmaps: number;
+    plans: number;
+    taskPlans: number;
+    taskSummaries: number;
+    sliceSummaries: number;
+    research: number;
+    requirements: number;
+    contexts: number;
+    other: number;
+  };
+}
+
+/** Pre-write statistics computed from a GSDProject without I/O. */
+export interface MigrationPreview {
+  milestoneCount: number;
+  totalSlices: number;
+  totalTasks: number;
+  doneSlices: number;
+  doneTasks: number;
+  sliceCompletionPct: number;
+  taskCompletionPct: number;
+  requirements: {
+    active: number;
+    validated: number;
+    deferred: number;
+    outOfScope: number;
+    total: number;
+  };
+}
 
 // ─── Local Helpers ─────────────────────────────────────────────────────────
 
@@ -365,4 +406,134 @@ export function formatState(milestones: GSDMilestone[]): string {
     lines.push('');
   }
   return lines.join('\n');
+}
+
+// ─── Directory Writer Orchestrator ─────────────────────────────────────────
+
+/**
+ * Write a complete .gsd directory tree from a GSDProject.
+ * Iterates milestones → slices → tasks, calls format functions,
+ * and writes each file via saveFile(). Returns a manifest of written paths.
+ *
+ * Skips research/summary files when null (does not write empty stubs).
+ */
+export async function writeGSDDirectory(
+  project: GSDProject,
+  targetPath: string,
+): Promise<WrittenFiles> {
+  const gsdDir = join(targetPath, '.gsd');
+  const milestonesBase = join(gsdDir, 'milestones');
+  const paths: string[] = [];
+  const counts: WrittenFiles['counts'] = {
+    roadmaps: 0,
+    plans: 0,
+    taskPlans: 0,
+    taskSummaries: 0,
+    sliceSummaries: 0,
+    research: 0,
+    requirements: 0,
+    contexts: 0,
+    other: 0,
+  };
+
+  // Root-level files
+  const projectPath = join(gsdDir, 'PROJECT.md');
+  await saveFile(projectPath, formatProject(project.projectContent));
+  paths.push(projectPath);
+  counts.other++;
+
+  const decisionsPath = join(gsdDir, 'DECISIONS.md');
+  await saveFile(decisionsPath, formatDecisions(project.decisionsContent));
+  paths.push(decisionsPath);
+  counts.other++;
+
+  const statePath = join(gsdDir, 'STATE.md');
+  await saveFile(statePath, formatState(project.milestones));
+  paths.push(statePath);
+  counts.other++;
+
+  if (project.requirements.length > 0) {
+    const reqPath = join(gsdDir, 'REQUIREMENTS.md');
+    await saveFile(reqPath, formatRequirements(project.requirements));
+    paths.push(reqPath);
+    counts.requirements++;
+  }
+
+  // Milestones
+  for (const milestone of project.milestones) {
+    const mDir = join(milestonesBase, milestone.id);
+
+    // Roadmap (always written, even for empty milestones)
+    const roadmapPath = join(mDir, `${milestone.id}-ROADMAP.md`);
+    await saveFile(roadmapPath, formatRoadmap(milestone));
+    paths.push(roadmapPath);
+    counts.roadmaps++;
+
+    // Context
+    const contextPath = join(mDir, `${milestone.id}-CONTEXT.md`);
+    await saveFile(contextPath, formatContext(milestone.id));
+    paths.push(contextPath);
+    counts.contexts++;
+
+    // Research (skip if null)
+    if (milestone.research !== null) {
+      const researchPath = join(mDir, `${milestone.id}-RESEARCH.md`);
+      await saveFile(researchPath, milestone.research);
+      paths.push(researchPath);
+      counts.research++;
+    }
+
+    // Slices
+    for (const slice of milestone.slices) {
+      const sDir = join(mDir, 'slices', slice.id);
+      const tasksDir = join(sDir, 'tasks');
+
+      // Slice plan
+      const planPath = join(sDir, `${slice.id}-PLAN.md`);
+      await saveFile(planPath, formatPlan(slice));
+      paths.push(planPath);
+      counts.plans++;
+
+      // Slice research (skip if null)
+      if (slice.research !== null) {
+        const sliceResearchPath = join(sDir, `${slice.id}-RESEARCH.md`);
+        await saveFile(sliceResearchPath, slice.research);
+        paths.push(sliceResearchPath);
+        counts.research++;
+      }
+
+      // Slice summary (skip if null)
+      if (slice.summary !== null) {
+        const summaryContent = formatSliceSummary(slice, milestone.id);
+        if (summaryContent) {
+          const summaryPath = join(sDir, `${slice.id}-SUMMARY.md`);
+          await saveFile(summaryPath, summaryContent);
+          paths.push(summaryPath);
+          counts.sliceSummaries++;
+        }
+      }
+
+      // Tasks
+      for (const task of slice.tasks) {
+        // Task plan (always written)
+        const taskPlanPath = join(tasksDir, `${task.id}-PLAN.md`);
+        await saveFile(taskPlanPath, formatTaskPlan(task, slice.id, milestone.id));
+        paths.push(taskPlanPath);
+        counts.taskPlans++;
+
+        // Task summary (skip if null)
+        if (task.summary !== null) {
+          const taskSummaryContent = formatTaskSummary(task, slice.id, milestone.id);
+          if (taskSummaryContent) {
+            const taskSummaryPath = join(tasksDir, `${task.id}-SUMMARY.md`);
+            await saveFile(taskSummaryPath, taskSummaryContent);
+            paths.push(taskSummaryPath);
+            counts.taskSummaries++;
+          }
+        }
+      }
+    }
+  }
+
+  return { paths, counts };
 }

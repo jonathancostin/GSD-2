@@ -3,6 +3,9 @@
 export { parsePlanningDirectory } from './parser.ts';
 export { validatePlanningDirectory } from './validator.ts';
 export { transformToGSD } from './transformer.ts';
+export { writeGSDDirectory } from './writer.ts';
+export type { WrittenFiles, MigrationPreview } from './writer.ts';
+export { generatePreview } from './preview.ts';
 export type {
   // Input types (old .planning format)
   PlanningProject,

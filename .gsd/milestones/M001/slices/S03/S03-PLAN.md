@@ -46,7 +46,7 @@
   - Verify: `npx tsx src/resources/extensions/gsd/tests/migrate-writer.test.ts` passes all assertions with 0 failures
   - Done when: all format functions round-trip correctly through their respective parsers
 
-- [ ] **T02: Implement writeGSDDirectory, generatePreview, and deriveState integration test** `est:35m`
+- [x] **T02: Implement writeGSDDirectory, generatePreview, and deriveState integration test** `est:35m`
   - Why: The orchestrator writes the full directory tree, the preview computes stats, and the integration test proves `deriveState()` accepts the output — this is the slice's primary acceptance criterion.
   - Files: `src/resources/extensions/gsd/migrate/writer.ts`, `src/resources/extensions/gsd/migrate/preview.ts`, `src/resources/extensions/gsd/migrate/index.ts`, `src/resources/extensions/gsd/tests/migrate-writer-integration.test.ts`
   - Do: Add `writeGSDDirectory(project, targetPath)` async orchestrator that calls format functions and `saveFile()` for each file in the tree. Add `generatePreview(project)` that counts milestones, slices, tasks, completion percentages. Write integration test: build a synthetic `GSDProject` with 1 milestone, 2 slices (1 done, 1 not), tasks with mixed completion, write to `mkdtempSync` dir, verify files exist, parse key files, call `deriveState()` and assert `phase: 'executing'`, `activeMilestone` present, correct slice/task counts.
