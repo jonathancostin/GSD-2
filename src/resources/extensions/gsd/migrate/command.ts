@@ -4,12 +4,16 @@
  * Thin UX orchestrator: resolves paths, runs the validate → parse → transform →
  * preview → write pipeline, and shows confirmation UI via showNextAction.
  * All business logic lives in the pipeline modules (S01–S03).
+ *
+ * After a successful write, offers an agent-driven review that audits the
+ * output for GSD-2 standards compliance.
  */
 
-import type { ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
-import { existsSync } from "node:fs";
+import type { ExtensionAPI, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { showNextAction } from "../../shared/next-action-ui.js";
 import {
   validatePlanningDirectory,
@@ -18,6 +22,59 @@ import {
   generatePreview,
   writeGSDDirectory,
 } from "./index.js";
+
+import type { MigrationPreview } from "../migrate/writer.js";
+
+/** Format preview stats for embedding in the review prompt. */
+function formatPreviewStats(preview: MigrationPreview): string {
+  const lines = [
+    `- Milestones: ${preview.milestoneCount}`,
+    `- Slices: ${preview.totalSlices} (${preview.doneSlices} done — ${preview.sliceCompletionPct}%)`,
+    `- Tasks: ${preview.totalTasks} (${preview.doneTasks} done — ${preview.taskCompletionPct}%)`,
+  ];
+  if (preview.requirements.total > 0) {
+    lines.push(
+      `- Requirements: ${preview.requirements.total} (${preview.requirements.validated} validated, ${preview.requirements.active} active, ${preview.requirements.deferred} deferred)`,
+    );
+  }
+  return lines.join("\n");
+}
+
+/** Load and interpolate the review-migration prompt template. */
+function buildReviewPrompt(
+  sourcePath: string,
+  gsdPath: string,
+  preview: MigrationPreview,
+): string {
+  const promptsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "prompts");
+  const templatePath = join(promptsDir, "review-migration.md");
+  let content = readFileSync(templatePath, "utf-8");
+
+  content = content.replaceAll("{{sourcePath}}", sourcePath);
+  content = content.replaceAll("{{gsdPath}}", gsdPath);
+  content = content.replaceAll("{{previewStats}}", formatPreviewStats(preview));
+
+  return content.trim();
+}
+
+/** Dispatch the review prompt to the agent. */
+function dispatchReview(
+  pi: ExtensionAPI,
+  sourcePath: string,
+  gsdPath: string,
+  preview: MigrationPreview,
+): void {
+  const prompt = buildReviewPrompt(sourcePath, gsdPath, preview);
+
+  pi.sendMessage(
+    {
+      customType: "gsd-migrate-review",
+      content: prompt,
+      display: false,
+    },
+    { triggerTurn: true },
+  );
+}
 
 export async function handleMigrate(
   args: string,
@@ -120,9 +177,40 @@ export async function handleMigrate(
   ctx.ui.notify("Writing .gsd directory…", "info");
 
   const result = await writeGSDDirectory(project, process.cwd());
+  const gsdPath = join(process.cwd(), ".gsd");
 
   ctx.ui.notify(
     `✓ Migration complete — ${result.paths.length} file(s) written to .gsd/`,
     "info",
   );
+
+  // ── Post-write review offer ────────────────────────────────────────────────
+  const reviewChoice = await showNextAction(ctx as any, {
+    title: "Migration written",
+    summary: [
+      `${result.paths.length} files written to .gsd/`,
+      "",
+      "The agent can now review the migrated output against GSD-2 standards —",
+      "checking structure, content quality, deriveState() round-trip, and",
+      "requirement statuses. It will fix minor issues in-place.",
+    ],
+    actions: [
+      {
+        id: "review",
+        label: "Review migration",
+        description: "Agent audits the .gsd output and reports PASS/FAIL per category",
+        recommended: true,
+      },
+      {
+        id: "skip",
+        label: "Skip review",
+        description: "Trust the migration output as-is",
+      },
+    ],
+    notYetMessage: "Run /gsd migrate again to re-migrate, or review .gsd manually.",
+  });
+
+  if (reviewChoice === "review") {
+    dispatchReview(ctx.pi, sourcePath, gsdPath, preview);
+  }
 }
