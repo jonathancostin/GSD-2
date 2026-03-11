@@ -73,7 +73,7 @@
   - Verify: Individual parser functions can be imported and called in test file. Validator tests pass.
   - Done when: Validator correctly categorizes missing files. Each per-file parser returns correct typed output for representative input strings.
 
-- [ ] **T03: Implement main parser orchestrator and pass all tests** `est:1h`
+- [x] **T03: Implement main parser orchestrator and pass all tests** `est:1h`
   - Why: The orchestrator is the public API — `parsePlanningDirectory(path)` walks the directory tree, delegates to per-file parsers, handles edge cases (duplicate phase numbers, orphan summaries, `.archive/` skipping, quick tasks, extra files), and assembles the complete `PlanningProject`.
   - Files: `src/resources/extensions/gsd/migrate/parser.ts`, `src/resources/extensions/gsd/tests/migrate-parser.test.ts`
   - Do: (1) Implement `parsePlanningDirectory(path): PlanningProject` — scan phases directory with `readdirSync`, use full directory name as key (not just number), detect and skip `.archive/`, scan each phase for plan/summary/research/verification/extra files, handle orphan summaries, scan `quick/` directory, scan `research/` directory, parse `milestones/` directory for per-milestone files. (2) Wire all per-file parsers from T02. (3) Ensure all test assertions pass. (4) Add barrel export `migrate/index.ts`.
