@@ -515,6 +515,140 @@ function makeResearch(fileName: string, content: string): PlanningResearch {
   assertEq(slices?.[2]?.depends, ['S02'], 'depends: S03 depends on S02');
 }
 
+// ─── Scenario 11: Requirements with unknown status and missing IDs ─────────
+
+{
+  console.log('Scenario 11: Requirements edge cases');
+
+  const project = emptyProject({
+    roadmap: flatRoadmap([roadmapEntry(1, 'req-edge')]),
+    requirements: [
+      makeRequirement('', 'No ID Feature', 'active'),
+      makeRequirement('', 'Another No ID', 'validated'),
+      makeRequirement('R005', 'Has ID', 'something-weird'),
+      makeRequirement('R006', 'Deferred One', 'DEFERRED'),
+    ],
+    phases: {
+      '1-req-edge': makePhase('1-req-edge', 1, 'req-edge'),
+    },
+  });
+
+  const result = transformToGSD(project);
+
+  assertEq(result.requirements[0]?.id, 'R001', 'req-edge: empty id gets R001');
+  assertEq(result.requirements[1]?.id, 'R002', 'req-edge: second empty id gets R002');
+  assertEq(result.requirements[2]?.id, 'R005', 'req-edge: existing id preserved');
+  assertEq(result.requirements[2]?.status, 'active', 'req-edge: unknown status normalized to active');
+  assertEq(result.requirements[3]?.status, 'deferred', 'req-edge: uppercase DEFERRED normalized');
+}
+
+// ─── Scenario 12: Vision derivation ────────────────────────────────────────
+
+{
+  console.log('Scenario 12: Vision derivation');
+
+  // Vision from project description
+  const project1 = emptyProject({
+    project: '# Cool Project\nA revolutionary tool for developers.',
+    roadmap: flatRoadmap([roadmapEntry(1, 'vision-phase')]),
+    phases: { '1-vision-phase': makePhase('1-vision-phase', 1, 'vision-phase') },
+  });
+
+  const result1 = transformToGSD(project1);
+  assert(result1.milestones[0]?.vision.includes('revolutionary'), 'vision: derived from project first line');
+
+  // Vision fallback when no project
+  const project2 = emptyProject({
+    roadmap: flatRoadmap([roadmapEntry(1, 'fallback')]),
+    phases: { '1-fallback': makePhase('1-fallback', 1, 'fallback') },
+  });
+
+  const result2 = transformToGSD(project2);
+  assert(result2.milestones[0]?.vision.length > 0, 'vision: fallback is non-empty');
+}
+
+// ─── Scenario 13: Decisions content from summaries ─────────────────────────
+
+{
+  console.log('Scenario 13: Decisions content');
+
+  const project = emptyProject({
+    roadmap: flatRoadmap([roadmapEntry(1, 'decision-phase', true)]),
+    phases: {
+      '1-decision-phase': makePhase('1-decision-phase', 1, 'decision-phase', {
+        plans: { '01': makePlan('01') },
+        summaries: { '01': makeSummary('01') },
+      }),
+    },
+  });
+
+  const result = transformToGSD(project);
+
+  assert(result.decisionsContent.includes('decision-01'), 'decisions: extracts key-decisions from summaries');
+}
+
+// ─── Scenario 14: No undefined values in output ───────────────────────────
+
+{
+  console.log('Scenario 14: No undefined values');
+
+  const project = emptyProject({
+    project: '# Test\nDescription.',
+    roadmap: flatRoadmap([
+      roadmapEntry(1, 'full-phase', true),
+      roadmapEntry(2, 'empty-phase', false),
+    ]),
+    requirements: [makeRequirement('R001', 'Req', 'active')],
+    research: [makeResearch('SUMMARY.md', 'Research content')],
+    phases: {
+      '1-full-phase': makePhase('1-full-phase', 1, 'full-phase', {
+        plans: { '01': makePlan('01') },
+        summaries: { '01': makeSummary('01') },
+        research: [makeResearch('FEATURES.md', 'Features')],
+      }),
+      '2-empty-phase': makePhase('2-empty-phase', 2, 'empty-phase'),
+    },
+  });
+
+  const result = transformToGSD(project);
+
+  // Deep check for undefined values
+  function checkNoUndefined(obj: unknown, path: string): void {
+    if (obj === undefined) {
+      assert(false, `no-undefined: ${path} is undefined`);
+      return;
+    }
+    if (obj === null) return; // null is allowed (e.g. research, summary)
+    if (Array.isArray(obj)) {
+      for (let i = 0; i < obj.length; i++) {
+        checkNoUndefined(obj[i], `${path}[${i}]`);
+      }
+    } else if (typeof obj === 'object') {
+      for (const [key, val] of Object.entries(obj as Record<string, unknown>)) {
+        checkNoUndefined(val, `${path}.${key}`);
+      }
+    }
+  }
+
+  checkNoUndefined(result, 'result');
+  assert(true, 'no-undefined: deep check completed without finding undefined values');
+}
+
+// ─── Scenario 15: Research with no files ───────────────────────────────────
+
+{
+  console.log('Scenario 15: Empty research');
+
+  const project = emptyProject({
+    roadmap: flatRoadmap([roadmapEntry(1, 'no-research')]),
+    phases: { '1-no-research': makePhase('1-no-research', 1, 'no-research') },
+  });
+
+  const result = transformToGSD(project);
+  assert(result.milestones[0]?.research === null, 'empty-research: milestone research is null');
+  assert(result.milestones[0]?.slices[0]?.research === null, 'empty-research: slice research is null');
+}
+
 // ─── Results ───────────────────────────────────────────────────────────────
 
 console.log(`\n${passed + failed} assertions: ${passed} passed, ${failed} failed`);

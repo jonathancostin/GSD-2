@@ -217,16 +217,62 @@ function buildMilestoneFromEntries(
 
 // ─── Requirements Mapping ──────────────────────────────────────────────────
 
-function mapRequirement(req: PlanningRequirement): GSDRequirement {
-  return {
-    id: req.id,
-    title: req.title,
-    class: 'core-capability',
-    status: req.status,
-    description: req.description,
-    source: 'inferred',
-    primarySlice: 'none yet',
-  };
+const VALID_STATUSES = new Set(['active', 'validated', 'deferred']);
+
+function normalizeStatus(status: string): 'active' | 'validated' | 'deferred' {
+  const lower = status.toLowerCase().trim();
+  return VALID_STATUSES.has(lower) ? (lower as 'active' | 'validated' | 'deferred') : 'active';
+}
+
+function mapRequirements(reqs: PlanningRequirement[]): GSDRequirement[] {
+  let autoId = 0;
+  return reqs.map((req) => {
+    autoId++;
+    return {
+      id: req.id && req.id.trim() !== '' ? req.id : padId('R', autoId, 3),
+      title: req.title,
+      class: 'core-capability',
+      status: normalizeStatus(req.status),
+      description: req.description,
+      source: 'inferred',
+      primarySlice: 'none yet',
+    };
+  });
+}
+
+// ─── Project-Level Derivation ──────────────────────────────────────────────
+
+function deriveVision(parsed: PlanningProject): string {
+  // Try first non-heading line from PROJECT.md
+  if (parsed.project) {
+    const lines = parsed.project.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith('#')) {
+        return firstSentence(trimmed);
+      }
+    }
+  }
+  // Fallback: roadmap title
+  if (parsed.roadmap) {
+    if (parsed.roadmap.milestones.length > 0) {
+      return parsed.roadmap.milestones[0].title;
+    }
+  }
+  return 'Project migration from .planning format';
+}
+
+function deriveDecisions(parsed: PlanningProject): string {
+  // Extract key decisions from phase summaries if available
+  const decisions: string[] = [];
+  for (const phase of Object.values(parsed.phases)) {
+    for (const summary of Object.values(phase.summaries)) {
+      const kd = summary.frontmatter['key-decisions'] ?? [];
+      decisions.push(...kd);
+    }
+  }
+  if (decisions.length === 0) return '';
+  return decisions.map((d) => `- ${d}`).join('\n');
 }
 
 // ─── Main Entry Point ──────────────────────────────────────────────────────
@@ -271,10 +317,16 @@ export function transformToGSD(parsed: PlanningProject): GSDProject {
     );
   }
 
+  // Set vision on first milestone (or all if multi)
+  const vision = deriveVision(parsed);
+  for (const m of milestones) {
+    if (!m.vision) m.vision = vision;
+  }
+
   return {
     milestones,
     projectContent: parsed.project ?? '',
-    requirements: parsed.requirements.map(mapRequirement),
-    decisionsContent: '',
+    requirements: mapRequirements(parsed.requirements),
+    decisionsContent: deriveDecisions(parsed),
   };
 }
