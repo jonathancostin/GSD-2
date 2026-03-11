@@ -42,7 +42,7 @@
 
 ## Tasks
 
-- [ ] **T01: Merge S03, implement handleMigrate command, and wire into commands.ts** `est:35m`
+- [x] **T01: Merge S03, implement handleMigrate command, and wire into commands.ts** `est:35m`
   - Why: This is the only production code task — creates the command handler, registers it, and wires the full pipeline. S03 must be merged first to make the `migrate/` module available.
   - Files: `src/resources/extensions/gsd/migrate/command.ts` (new), `src/resources/extensions/gsd/commands.ts`, `src/resources/extensions/gsd/migrate/index.ts`
   - Do: Merge `gsd/M001/S03` into `gsd/M001/S04`. Create `migrate/command.ts` with `handleMigrate(args, ctx)` implementing: path validation, `.planning` resolution, `validatePlanningDirectory` with fatal/warning display, pipeline execution, preview display via `ctx.ui.notify`, `.gsd/` exists warning, `showNextAction` confirmation, `writeGSDDirectory` on confirm, success message with file counts. In `commands.ts`: add `'migrate'` to `subcommands` array, add `if (trimmed === 'migrate' || trimmed.startsWith('migrate '))` dispatch block, update the unknown-command fallback message. Update `migrate/index.ts` barrel to export `handleMigrate`.

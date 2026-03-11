@@ -1,5 +1,6 @@
 // Barrel export for old .planning migration module
 
+export { handleMigrate } from './command.ts';
 export { parsePlanningDirectory } from './parser.ts';
 export { validatePlanningDirectory } from './validator.ts';
 export { transformToGSD } from './transformer.ts';
