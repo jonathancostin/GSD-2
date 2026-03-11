@@ -228,18 +228,12 @@ function parseDetailsBlockMilestones(lines: string[]): PlanningRoadmapMilestone[
       // Look for <summary>vN.N Title (Phases N-M) -- STATUS</summary>
       const summaryMatch = trimmed.match(/<summary>\s*(v[\d.]+)\s+(.+?)\s*(?:\(.*\))?\s*(?:--\s*.*)?\s*<\/summary>/);
       if (summaryMatch) {
-        const shipped = /shipped|completed|complete/i.test(trimmed);
         currentMilestone = {
           id: summaryMatch[1],
           title: summaryMatch[2].trim(),
           collapsed: true,
           phases: [],
         };
-        // If milestone is marked shipped/completed and has no individual phase entries,
-        // we'll detect that after scanning the block
-        if (shipped && currentMilestone.phases.length === 0) {
-          // We'll add phase entries as we find them below
-        }
       }
       continue;
     }

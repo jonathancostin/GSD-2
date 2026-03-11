@@ -11,8 +11,7 @@
 
 import type { ExtensionAPI, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { join, dirname } from "node:path";
+import { resolve, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { showNextAction } from "../../shared/next-action-ui.js";
 import {
@@ -23,7 +22,7 @@ import {
   writeGSDDirectory,
 } from "./index.js";
 
-import type { MigrationPreview } from "../migrate/writer.js";
+import type { MigrationPreview } from "./writer.js";
 
 /** Format preview stats for embedding in the review prompt. */
 function formatPreviewStats(preview: MigrationPreview): string {

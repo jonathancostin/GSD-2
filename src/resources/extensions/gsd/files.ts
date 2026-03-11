@@ -548,7 +548,7 @@ export function parseRequirementCounts(content: string | null): RequirementCount
   for (const section of sections) {
     const text = extractSection(content, section.heading, 2);
     if (!text) continue;
-    const matches = text.match(/^###\s+R\d+\s+—/gm);
+    const matches = text.match(/^###\s+[A-Z][\w-]*\d+\s+—/gm);
     counts[section.key] = matches ? matches.length : 0;
   }
 
