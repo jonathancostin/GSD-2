@@ -41,7 +41,7 @@
 
 ## Tasks
 
-- [ ] **T01: Merge S01, define GSD output types, and scaffold test file** `est:45m`
+- [x] **T01: Merge S01, define GSD output types, and scaffold test file** `est:45m`
   - Why: S01's migrate files aren't on this branch yet, and the output type contract must be defined before transformer logic. The test file (initially failing) establishes the verification target.
   - Files: `src/resources/extensions/gsd/migrate/types.ts`, `src/resources/extensions/gsd/migrate/index.ts`, `src/resources/extensions/gsd/tests/migrate-transformer.test.ts`
   - Do: (1) `git merge gsd/M001/S01` to bring in S01 files. (2) Extend `types.ts` with GSD output types: `GSDProject`, `GSDMilestone`, `GSDSlice`, `GSDTask`, `GSDRequirement`, `GSDSliceSummaryData`, `GSDTaskSummaryData`, `GSDBoundaryEntry`. Mirror GSD-2 runtime type shapes (`RoadmapSliceEntry`, `TaskPlanEntry`, `SummaryFrontmatter`) so S03's writer is mechanical. (3) Create test file with fixture helpers that build synthetic `PlanningProject` objects in-memory (no filesystem), import `transformToGSD` (will fail until T02), and define test scenarios: flat single-milestone, multi-milestone, decimal phase ordering, completion state, research consolidation, requirements, empty phase, demo derivation. (4) Update barrel export in `index.ts` with new types and `transformToGSD`.

@@ -254,3 +254,117 @@ export interface PlanningPhaseFile {
   /** Raw content */
   content: string;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GSD Output Types — produced by transformer, consumed by writer (S03)
+// Mirror GSD-2 runtime shapes so deriveState() works on migrated output.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface GSDProject {
+  milestones: GSDMilestone[];
+  /** Raw PROJECT.md text (pass through from old format) */
+  projectContent: string;
+  requirements: GSDRequirement[];
+  /** Empty or pass-through from old project key decisions */
+  decisionsContent: string;
+}
+
+export interface GSDMilestone {
+  /** e.g. "M001", "M002" */
+  id: string;
+  /** From old milestone section title or roadmap H1 */
+  title: string;
+  /** Derived from PROJECT.md description or roadmap H1 */
+  vision: string;
+  /** Empty [] if none found */
+  successCriteria: string[];
+  slices: GSDSlice[];
+  /** Consolidated research blob, null if no research */
+  research: string | null;
+  /** Empty [] — old format has no boundary map equivalent */
+  boundaryMap: GSDBoundaryEntry[];
+}
+
+export interface GSDSlice {
+  /** e.g. "S01", "S02" */
+  id: string;
+  /** Titlecased from phase slug */
+  title: string;
+  /** Default 'medium' */
+  risk: 'low' | 'medium' | 'high';
+  /** [prev slice ID] for sequential, [] for S01 */
+  depends: string[];
+  /** From roadmap checkbox */
+  done: boolean;
+  /** Derived from first plan objective or defaulted */
+  demo: string;
+  /** Same as demo or phase slug */
+  goal: string;
+  tasks: GSDTask[];
+  /** Per-phase research content, null if none */
+  research: string | null;
+  /** Only populated if done */
+  summary: GSDSliceSummaryData | null;
+}
+
+export interface GSDTask {
+  /** e.g. "T01", "T02" */
+  id: string;
+  /** From plan frontmatter or phase slug + plan number */
+  title: string;
+  /** From plan objective */
+  description: string;
+  /** Summary exists for this plan number */
+  done: boolean;
+  /** From summary duration if available, else '' */
+  estimate: string;
+  /** From plan frontmatter files_modified */
+  files: string[];
+  /** From plan frontmatter must_haves.truths */
+  mustHaves: string[];
+  /** Only populated if done */
+  summary: GSDTaskSummaryData | null;
+}
+
+export interface GSDRequirement {
+  /** e.g. "R001" */
+  id: string;
+  title: string;
+  /** Default 'core-capability' */
+  class: string;
+  /** 'active' | 'validated' | 'deferred' */
+  status: string;
+  description: string;
+  /** Default 'inferred' */
+  source: string;
+  /** Default 'none yet' */
+  primarySlice: string;
+}
+
+export interface GSDSliceSummaryData {
+  /** From last plan summary's completed field */
+  completedAt: string;
+  provides: string[];
+  keyFiles: string[];
+  keyDecisions: string[];
+  patternsEstablished: string[];
+  duration: string;
+  /** From summary body */
+  whatHappened: string;
+}
+
+export interface GSDTaskSummaryData {
+  completedAt: string;
+  provides: string[];
+  keyFiles: string[];
+  duration: string;
+  /** From summary body */
+  whatHappened: string;
+}
+
+export interface GSDBoundaryEntry {
+  fromSlice: string;
+  toSlice: string;
+  produces: string;
+  consumes: string;
+}
