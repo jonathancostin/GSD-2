@@ -10,7 +10,7 @@ Enable users of the original get-shit-done system to upgrade to GSD-2 without lo
 
 ## Current State
 
-Milestone M001 in progress. S01 complete — parser module ships in `migrate/` with full type definitions, validator, 7 per-file parsers, and main orchestrator. 120 parser tests + 462 total tests passing. S02 (Structure Mapper and Content Transformer) is next.
+Milestone M001 in progress. S01 and S02 complete. The full parse→transform pipeline works: `parsePlanningDirectory()` reads any `.planning` dir into a typed `PlanningProject`, and `transformToGSD()` converts it into a typed `GSDProject` ready for writing. 92 transformer tests + 120 parser tests passing. S03 (writer) is next — it serializes `GSDProject` to a `.gsd/` directory tree that `deriveState()` can read.
 
 ## Constraints
 

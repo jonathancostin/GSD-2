@@ -22,7 +22,7 @@
 - [x] **S01: Old .planning Parser** `risk:high` `depends:[]`
   > After this: unit tests prove the parser correctly reads PROJECT.md, ROADMAP.md, REQUIREMENTS.md, STATE.md, phase directories, plan files, summary files, research files, and config from a representative .planning directory — including detection of missing/corrupt files.
 
-- [ ] **S02: Structure Mapper and Content Transformer** `risk:high` `depends:[S01]`
+- [x] **S02: Structure Mapper and Content Transformer** `risk:high` `depends:[S01]`
   > After this: unit tests prove that parsed old-format data transforms into valid GSD-2 structures — phases become slices, plans become tasks, completion state is preserved, research is consolidated, requirements are classified, and the output matches GSD-2 template shapes.
 
 - [ ] **S03: .gsd Directory Writer** `risk:medium` `depends:[S02]`
