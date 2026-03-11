@@ -100,6 +100,16 @@ let unitTimeoutHandle: ReturnType<typeof setTimeout> | null = null;
 let wrapupWarningHandle: ReturnType<typeof setTimeout> | null = null;
 let idleWatchdogHandle: ReturnType<typeof setInterval> | null = null;
 
+/**
+ * Footer factory that renders zero lines — effectively hides the built-in footer.
+ * Used during auto-mode so the progress widget is the only bottom-of-screen chrome.
+ */
+const hideFooter = () => ({
+  render(_width: number): string[] { return []; },
+  invalidate() {},
+  dispose() {},
+});
+
 /** Dashboard data for the overlay */
 export interface AutoDashboardData {
   active: boolean;
@@ -190,6 +200,7 @@ export async function stopAuto(ctx?: ExtensionContext, pi?: ExtensionAPI): Promi
   pendingCrashRecovery = null;
   ctx?.ui.setStatus("gsd-auto", undefined);
   ctx?.ui.setWidget("gsd-progress", undefined);
+  ctx?.ui.setFooter(undefined);
 
   // Restore the user's original model
   if (pi && ctx && originalModelId) {
@@ -217,6 +228,7 @@ export async function pauseAuto(ctx?: ExtensionContext, _pi?: ExtensionAPI): Pro
   // — all needed for resume and dashboard display
   ctx?.ui.setStatus("gsd-auto", "paused");
   ctx?.ui.setWidget("gsd-progress", undefined);
+  ctx?.ui.setFooter(undefined);
   const resumeCmd = stepMode ? "/gsd next" : "/gsd auto";
   ctx?.ui.notify(
     `${stepMode ? "Step" : "Auto"}-mode paused (Escape). Type to interact, or ${resumeCmd} to resume.`,
@@ -246,6 +258,7 @@ export async function startAuto(
     // Re-initialize metrics in case ledger was lost during pause
     if (!getLedger()) initMetrics(base);
     ctx.ui.setStatus("gsd-auto", stepMode ? "next" : "auto");
+    ctx.ui.setFooter(hideFooter);
     ctx.ui.notify(stepMode ? "Step-mode resumed." : "Auto-mode resumed.", "info");
     await dispatchNextUnit(ctx, pi);
     return;
@@ -342,6 +355,7 @@ export async function startAuto(
   }
 
   ctx.ui.setStatus("gsd-auto", stepMode ? "next" : "auto");
+  ctx.ui.setFooter(hideFooter);
   const modeLabel = stepMode ? "Step-mode" : "Auto-mode";
   const pendingCount = state.registry.filter(m => m.status !== 'complete').length;
   const scopeMsg = pendingCount > 1
@@ -667,6 +681,13 @@ function updateProgressWidget(
           ));
         }
 
+        // ── Session stats (replaces the hidden built-in footer) ───────────
+        const sessionStats = buildSessionStatsLine(ctx, theme, width);
+        if (sessionStats) {
+          lines.push("");
+          lines.push(sessionStats);
+        }
+
         const hintParts: string[] = [];
         if (preferredModel) hintParts.push(preferredModel);
         hintParts.push("esc pause");
@@ -702,6 +723,80 @@ function formatAutoElapsed(): string {
   const h = Math.floor(m / 60);
   const rm = m % 60;
   return `${h}h ${rm}m`;
+}
+
+/** Format token counts for compact display */
+function formatWidgetTokens(count: number): string {
+  if (count < 1000) return count.toString();
+  if (count < 10000) return `${(count / 1000).toFixed(1)}k`;
+  if (count < 1000000) return `${Math.round(count / 1000)}k`;
+  if (count < 10000000) return `${(count / 1000000).toFixed(1)}M`;
+  return `${Math.round(count / 1000000)}M`;
+}
+
+/**
+ * Build a compact session stats line for the progress widget.
+ * Shows the same info as the built-in footer: tokens, cost, context %, model.
+ */
+function buildSessionStatsLine(
+  ctx: ExtensionContext,
+  theme: { fg: (color: string, text: string) => string },
+  width: number,
+): string | null {
+  const pad = INDENT.base;
+  let totalInput = 0, totalOutput = 0;
+  let totalCacheRead = 0, totalCacheWrite = 0, totalCost = 0;
+
+  for (const entry of ctx.sessionManager.getEntries()) {
+    if (entry.type === "message" && (entry as any).message?.role === "assistant") {
+      const u = (entry as any).message.usage;
+      if (u) {
+        totalInput += u.input || 0;
+        totalOutput += u.output || 0;
+        totalCacheRead += u.cacheRead || 0;
+        totalCacheWrite += u.cacheWrite || 0;
+        totalCost += u.cost?.total || 0;
+      }
+    }
+  }
+
+  const contextUsage = ctx.getContextUsage?.();
+  const contextWindow = contextUsage?.contextWindow ?? ctx.model?.contextWindow ?? 0;
+  const contextPercentValue = contextUsage?.percent ?? 0;
+  const contextPercent = contextUsage?.percent !== null ? contextPercentValue.toFixed(1) : "?";
+
+  const parts: string[] = [];
+  if (totalInput) parts.push(`↑${formatWidgetTokens(totalInput)}`);
+  if (totalOutput) parts.push(`↓${formatWidgetTokens(totalOutput)}`);
+  if (totalCacheRead) parts.push(`R${formatWidgetTokens(totalCacheRead)}`);
+  if (totalCacheWrite) parts.push(`W${formatWidgetTokens(totalCacheWrite)}`);
+  if (totalCost) parts.push(`$${totalCost.toFixed(3)}`);
+
+  const contextDisplay = contextPercent === "?"
+    ? `?/${formatWidgetTokens(contextWindow)}`
+    : `${contextPercent}%/${formatWidgetTokens(contextWindow)}`;
+  if (contextPercentValue > 90) {
+    parts.push(theme.fg("error", contextDisplay));
+  } else if (contextPercentValue > 70) {
+    parts.push(theme.fg("warning", contextDisplay));
+  } else {
+    parts.push(contextDisplay);
+  }
+
+  if (parts.length === 0) return null;
+
+  // Dim each part individually — some parts (context %) already carry their own color
+  const statsLeft = parts.map(p => {
+    // Parts that already have color escapes should not be double-dimmed
+    if (p.includes("\x1b[")) return p;
+    return theme.fg("dim", p);
+  }).join(theme.fg("dim", " "));
+
+  // Model name on the right
+  const modelName = ctx.model?.id ?? "";
+  const right = modelName ? theme.fg("dim", modelName) : "";
+
+  return rightAlign(`${pad}${statsLeft}`, right, width);
 }
 
 /** Cached slice progress for the widget — avoid async in render */
