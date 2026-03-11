@@ -182,8 +182,19 @@ function mapSlice(
 
 // ─── Milestone Building ───────────────────────────────────────────────────
 
-function findPhase(phases: Record<string, PlanningPhase>, phaseNumber: number): PlanningPhase | undefined {
-  return Object.values(phases).find((p) => p.number === phaseNumber);
+function findPhase(phases: Record<string, PlanningPhase>, phaseNumber: number, entryTitle?: string): PlanningPhase | undefined {
+  const matches = Object.values(phases).filter((p) => p.number === phaseNumber);
+  if (matches.length <= 1) return matches[0];
+  // Multiple phases with the same number — try to match by title/slug similarity
+  if (entryTitle) {
+    const normalizedTitle = entryTitle.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    const best = matches.find((p) => {
+      const normalizedSlug = p.slug.replace(/-/g, ' ').toLowerCase();
+      return normalizedSlug === normalizedTitle || normalizedTitle.includes(normalizedSlug) || normalizedSlug.includes(normalizedTitle);
+    });
+    if (best) return best;
+  }
+  return matches[0];
 }
 
 function buildMilestoneFromEntries(
@@ -199,7 +210,7 @@ function buildMilestoneFromEntries(
   const slices: GSDSlice[] = [];
   for (let i = 0; i < sorted.length; i++) {
     const entry = sorted[i];
-    const phase = findPhase(phases, entry.number);
+    const phase = findPhase(phases, entry.number, entry.title);
     const prevId = i > 0 ? slices[i - 1].id : null;
     slices.push(mapSlice(phase, entry, i, prevId));
   }
@@ -218,10 +229,13 @@ function buildMilestoneFromEntries(
 // ─── Requirements Mapping ──────────────────────────────────────────────────
 
 const VALID_STATUSES = new Set(['active', 'validated', 'deferred']);
+const COMPLETE_ALIASES = new Set(['complete', 'completed', 'done', 'shipped']);
 
 function normalizeStatus(status: string): 'active' | 'validated' | 'deferred' {
   const lower = status.toLowerCase().trim();
-  return VALID_STATUSES.has(lower) ? (lower as 'active' | 'validated' | 'deferred') : 'active';
+  if (VALID_STATUSES.has(lower)) return lower as 'active' | 'validated' | 'deferred';
+  if (COMPLETE_ALIASES.has(lower)) return 'validated';
+  return 'active';
 }
 
 function mapRequirements(reqs: PlanningRequirement[]): GSDRequirement[] {

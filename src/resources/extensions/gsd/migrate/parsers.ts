@@ -56,15 +56,45 @@ function extractTasks(content: string): string[] {
 
 /** Parse a checkbox phase entry line: `- [x] 29 — Auth System` */
 function parsePhaseEntry(line: string): PlanningRoadmapEntry | null {
-  // Match: - [x] or - [ ] followed by number — title (or number — title)
-  const match = line.match(/^-\s+\[([ xX])\]\s+(\d+)\s*[—–-]\s*(.+)$/);
-  if (!match) return null;
-  return {
-    number: parseInt(match[2], 10),
-    title: match[3].trim(),
-    done: match[1].toLowerCase() === 'x',
-    raw: line,
-  };
+  // Strip bold markers (**) for uniform matching — old roadmaps often bold phase entries
+  const stripped = line.replace(/\*\*/g, '');
+
+  // Format 1: - [x] Phase 25: Title (N/N plans) -- completed ...
+  // Also handles: - [x] Phase 25: Title - Description (completed ...)
+  const fmtPhaseColon = stripped.match(/^-\s+\[([ xX])\]\s+(?:Phase\s+)?(\d+(?:\.\d+)?)\s*:\s*(.+)$/);
+  if (fmtPhaseColon) {
+    let title = fmtPhaseColon[3].trim();
+    // Strip trailing parentheticals, plan counts, and completion notes
+    title = title.replace(/\s*\(\d+\/\d+\s+plans?\)/, '')
+                 .replace(/\s*--\s+.*$/, '')
+                 .replace(/\s*-\s+.*$/, '')  // strip "- description" suffix
+                 .replace(/\s*\(completed.*\)$/i, '')
+                 .replace(/\s*\(shipped.*\)$/i, '')
+                 .trim();
+    return {
+      number: parseFloat(fmtPhaseColon[2]),
+      title,
+      done: fmtPhaseColon[1].toLowerCase() === 'x',
+      raw: line,
+    };
+  }
+
+  // Format 2: - [x] 25 — Title (em-dash/en-dash only — NOT plain hyphen to avoid plan file refs)
+  const fmtDash = stripped.match(/^-\s+\[([ xX])\]\s+(?:Phase\s+)?(\d+(?:\.\d+)?)\s*[—–]\s*(.+)$/);
+  if (fmtDash) {
+    let title = fmtDash[3].trim();
+    title = title.replace(/\s*\(\d+\/\d+\s+plans?\)/, '')
+                 .replace(/\s*--\s+.*$/, '')
+                 .trim();
+    return {
+      number: parseFloat(fmtDash[2]),
+      title,
+      done: fmtDash[1].toLowerCase() === 'x',
+      raw: line,
+    };
+  }
+
+  return null;
 }
 
 /**
@@ -72,6 +102,7 @@ function parsePhaseEntry(line: string): PlanningRoadmapEntry | null {
  * Handles two formats:
  * 1. Flat phase lists — checkbox lines under a single Phases heading
  * 2. Milestone-sectioned — `## v2.0 — Title` headings with optional `<details>` blocks
+ * 3. Details-sectioned — `<details><summary>v1.0 Title (Phases N-M)</summary>` blocks with phase checkboxes inside
  */
 export function parseOldRoadmap(content: string): PlanningRoadmap {
   const result: PlanningRoadmap = {
@@ -82,7 +113,40 @@ export function parseOldRoadmap(content: string): PlanningRoadmap {
 
   const lines = content.split('\n');
 
-  // Detect milestone-sectioned format: has ## headings with version-like IDs
+  // ─── Strategy 1: Detect <details><summary>vN.N Title</summary> blocks ───
+  // This handles the format where milestones are <details> blocks containing phase checkboxes
+  const detailsMilestones = parseDetailsBlockMilestones(lines);
+  if (detailsMilestones.length > 0) {
+    result.milestones = detailsMilestones;
+
+    // Also check for non-collapsed milestone sections (### v3.0 Title)
+    // that follow the <details> blocks
+    for (let i = 0; i < lines.length; i++) {
+      const heading = lines[i].match(/^###\s+(v[\d.]+)\s+(.+?)(?:\s*\(.*\))?\s*$/);
+      if (heading) {
+        // Already captured as a details block?
+        const id = heading[1];
+        if (result.milestones.some(m => m.id === id)) continue;
+
+        // Collect phase entries until next ## or ### heading
+        const phases: PlanningRoadmapEntry[] = [];
+        for (let j = i + 1; j < lines.length; j++) {
+          if (/^##?\s/.test(lines[j]) || /^###\s/.test(lines[j])) break;
+          const entry = parsePhaseEntry(lines[j].trim());
+          if (entry) phases.push(entry);
+        }
+        result.milestones.push({
+          id,
+          title: heading[2].trim(),
+          collapsed: false,
+          phases,
+        });
+      }
+    }
+    return result;
+  }
+
+  // ─── Strategy 2: Detect ## heading-sectioned milestones ───
   const milestoneHeadingRegex = /^##\s+(.+)$/;
   const milestoneHeadings: { index: number; id: string; title: string }[] = [];
 
@@ -90,8 +154,8 @@ export function parseOldRoadmap(content: string): PlanningRoadmap {
     const match = lines[i].match(milestoneHeadingRegex);
     if (match) {
       const heading = match[1].trim();
-      // Skip generic headings like "## Phases"
-      if (/^phases$/i.test(heading)) continue;
+      // Skip generic headings like "## Phases", "## Milestones", "## Phase Details", "## Progress"
+      if (/^(phases?|milestones?|phase\s+details?|progress)$/i.test(heading)) continue;
       // Extract milestone ID (e.g. "v2.0" from "v2.0 — Foundation")
       const idMatch = heading.match(/^(v[\d.]+|[\w.-]+)\s*[—–-]\s*(.+)$/);
       if (idMatch) {
@@ -131,7 +195,7 @@ export function parseOldRoadmap(content: string): PlanningRoadmap {
       result.milestones.push(milestone);
     }
   } else {
-    // Flat format — just extract all phase checkbox lines
+    // ─── Strategy 3: Flat format — just extract all phase checkbox lines ───
     for (const line of lines) {
       const entry = parsePhaseEntry(line.trim());
       if (entry) {
@@ -141,6 +205,63 @@ export function parseOldRoadmap(content: string): PlanningRoadmap {
   }
 
   return result;
+}
+
+/**
+ * Parse <details><summary>vN.N Title (Phases N-M)</summary>...</details> blocks.
+ * Each block becomes a milestone with the phase entries inside it.
+ */
+function parseDetailsBlockMilestones(lines: string[]): PlanningRoadmapMilestone[] {
+  const milestones: PlanningRoadmapMilestone[] = [];
+  let inDetails = false;
+  let currentMilestone: PlanningRoadmapMilestone | null = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (trimmed === '<details>') {
+      inDetails = true;
+      continue;
+    }
+
+    if (inDetails && !currentMilestone) {
+      // Look for <summary>vN.N Title (Phases N-M) -- STATUS</summary>
+      const summaryMatch = trimmed.match(/<summary>\s*(v[\d.]+)\s+(.+?)\s*(?:\(.*\))?\s*(?:--\s*.*)?\s*<\/summary>/);
+      if (summaryMatch) {
+        const shipped = /shipped|completed|complete/i.test(trimmed);
+        currentMilestone = {
+          id: summaryMatch[1],
+          title: summaryMatch[2].trim(),
+          collapsed: true,
+          phases: [],
+        };
+        // If milestone is marked shipped/completed and has no individual phase entries,
+        // we'll detect that after scanning the block
+        if (shipped && currentMilestone.phases.length === 0) {
+          // We'll add phase entries as we find them below
+        }
+      }
+      continue;
+    }
+
+    if (trimmed === '</details>') {
+      if (currentMilestone) {
+        milestones.push(currentMilestone);
+        currentMilestone = null;
+      }
+      inDetails = false;
+      continue;
+    }
+
+    if (currentMilestone) {
+      const entry = parsePhaseEntry(trimmed);
+      if (entry) {
+        currentMilestone.phases.push(entry);
+      }
+    }
+  }
+
+  return milestones;
 }
 
 // ─── Plan Parser (XML-in-Markdown) ─────────────────────────────────────────
@@ -403,19 +524,43 @@ export function parseOldRequirements(content: string): PlanningRequirement[] {
 
   for (const line of lines) {
     // Status section heading (## Active, ## Validated, ## Deferred)
-    const statusMatch = line.match(/^##\s+(\w+)\s*$/);
+    const statusMatch = line.match(/^##\s+(\w[\w\s&]*\w)\s*$/);
     if (statusMatch) {
       flushReq();
       currentStatus = statusMatch[1].toLowerCase();
       continue;
     }
 
-    // Requirement heading (### R001 — Title)
-    const reqMatch = line.match(/^###\s+(R\d+)\s*[—–-]\s*(.+)$/);
-    if (reqMatch) {
+    // Section heading (### Category Name) — use as context for bullet requirements
+    const sectionMatch = line.match(/^###\s+(.+)$/);
+    if (sectionMatch) {
+      // Check if this is a requirement heading (### R001 — Title)
+      const reqHeading = sectionMatch[1].match(/^(R\d+)\s*[—–-]\s*(.+)$/);
+      if (reqHeading) {
+        flushReq();
+        currentReq = { id: reqHeading[1], title: reqHeading[2].trim(), status: currentStatus, description: '' };
+        currentRaw.push(line);
+        continue;
+      }
+      // Otherwise just note the section — don't flush, could be a category for bullet reqs
       flushReq();
-      currentReq = { id: reqMatch[1], title: reqMatch[2].trim(), status: currentStatus, description: '' };
-      currentRaw.push(line);
+      continue;
+    }
+
+    // Bullet-format requirement: - [x] **ID**: Description
+    const bulletReqMatch = line.match(/^-\s+\[([ xX])\]\s+\*\*([^*]+)\*\*\s*:\s*(.+)$/);
+    if (bulletReqMatch) {
+      flushReq();
+      const done = bulletReqMatch[1].toLowerCase() === 'x';
+      const id = bulletReqMatch[2].trim();
+      const desc = bulletReqMatch[3].trim();
+      requirements.push({
+        id,
+        title: desc,
+        status: done ? 'complete' : (currentStatus || 'active'),
+        description: desc,
+        raw: line,
+      });
       continue;
     }
 
