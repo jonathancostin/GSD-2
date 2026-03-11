@@ -138,7 +138,7 @@ export function registerGSDCommand(pi: ExtensionAPI): void {
       }
 
       if (trimmed === "migrate" || trimmed.startsWith("migrate ")) {
-        await handleMigrate(trimmed.replace(/^migrate\s*/, "").trim(), ctx);
+        await handleMigrate(trimmed.replace(/^migrate\s*/, "").trim(), ctx, pi);
         return;
       }
 

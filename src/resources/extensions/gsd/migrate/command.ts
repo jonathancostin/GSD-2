@@ -79,6 +79,7 @@ function dispatchReview(
 export async function handleMigrate(
   args: string,
   ctx: ExtensionCommandContext,
+  pi: ExtensionAPI,
 ): Promise<void> {
   // ── Resolve source path ────────────────────────────────────────────────────
   // Default to cwd when no args given; expand ~ to HOME
@@ -210,6 +211,6 @@ export async function handleMigrate(
   });
 
   if (reviewChoice === "review") {
-    dispatchReview(ctx.pi, sourcePath, gsdPath, preview);
+    dispatchReview(pi, sourcePath, gsdPath, preview);
   }
 }
