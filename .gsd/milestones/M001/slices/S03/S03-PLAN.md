@@ -39,7 +39,7 @@
 
 ## Tasks
 
-- [ ] **T01: Merge S02, implement format functions and round-trip unit tests** `est:45m`
+- [x] **T01: Merge S02, implement format functions and round-trip unit tests** `est:45m`
   - Why: Format functions are the core of the writer — they must produce output that parses back correctly through GSD-2's parsers. Merging S02 first brings in the types and transformer. Tests are written alongside implementation so round-trip correctness is proven immediately.
   - Files: `src/resources/extensions/gsd/migrate/writer.ts`, `src/resources/extensions/gsd/tests/migrate-writer.test.ts`
   - Do: Merge S02 branch into S03. Implement `serializeFrontmatter()`, `formatRoadmap()`, `formatPlan()`, `formatSliceSummary()`, `formatTaskSummary()`, `formatTaskPlan()`, `formatRequirements()` as pure string→string functions. Write round-trip tests: feed GSD types through format functions, parse output with `parseRoadmap()`/`parsePlan()`/`parseSummary()`/`parseRequirementCounts()`, assert fields match input. Cover edge cases: empty vision, empty successCriteria, empty tasks, null summary, done/not-done checkboxes.

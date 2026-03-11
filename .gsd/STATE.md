@@ -2,16 +2,15 @@
 
 **Milestone:** M001 — .planning → .gsd Migration Tool
 **Phase:** executing
-**Current Slice:** S03 — .gsd Directory Writer (not started)
-**Current Task:** none — S02 complete, ready for S03
-**Branch:** gsd/M001/S02 (pending squash-merge to main before S03 branch)
+**Current Slice:** S03 — .gsd Directory Writer
+**Current Task:** T02 — writeGSDDirectory, generatePreview, deriveState integration test
+**Branch:** gsd/M001/S03
 
 ## Progress
 
 - [x] S01: Parse .planning Directories (3/3 tasks — complete, 120 parser tests pass)
 - [x] S02: Transform Parsed Data to GSD Structure (3/3 tasks — complete, 92 transformer tests pass)
-  - [x] T01: Merge S01, define GSD output types, and scaffold test file
-  - [x] T02: Implement core transformer (+ research/requirements ahead of schedule)
-  - [x] T03: Research consolidation, requirements mapping, field defaulting
-- [ ] S03: .gsd Directory Writer
+- [ ] S03: .gsd Directory Writer (1/2 tasks)
+  - [x] T01: Merge S02, implement format functions and round-trip unit tests (79 assertions pass)
+  - [ ] T02: Implement writeGSDDirectory, generatePreview, and deriveState integration test
 - [ ] S04: /gsd migrate Command with Preview and Confirmation
