@@ -6,18 +6,18 @@ This file is the explicit capability and coverage contract for the project.
 
 
 
+## Validated
+
 ### R007 — /gsd migrate command with preview
 - Class: primary-user-loop
-- Status: active
+- Status: validated
 - Description: Add `/gsd migrate` subcommand that accepts a path to a project with a `.planning` directory, shows a preview of what will be created (file count, milestone/slice/task counts, completion state), and asks for confirmation before writing.
 - Why it matters: Users need to see what will happen before committing to an irreversible directory write. The command should be discoverable within the existing /gsd surface.
 - Source: user
 - Primary owning slice: M001/S04
 - Supporting slices: none
-- Validation: unmapped
-- Notes: Preview should show enough to build confidence without overwhelming.
-
-## Validated
+- Validation: M001/S04 — 37-assertion pipeline integration test proves: path resolution (`.planning` appended when missing), validation gating (fatal issues block pipeline), full pipeline round-trip (parse → transform → preview → write → deriveState returns coherent state), `.gsd/` exists detection. Command registered in `commands.ts` with tab completion. Preview shows milestone/slice/task counts with completion percentages. `showNextAction` confirmation gates writing.
+- Notes: Preview shows milestone/slice/task counts and completion percentages — sufficient to build confidence without overwhelming.
 
 ### R006 — Write complete .gsd directory structure
 - Class: core-capability
@@ -154,7 +154,7 @@ This file is the explicit capability and coverage contract for the project.
 | R004 | primary-user-loop | validated | M001/S02 | none | M001/S02 — scenario 4 |
 | R005 | continuity | validated | M001/S02 | none | M001/S02 — scenarios 5, 15 |
 | R006 | core-capability | validated | M001/S03 | none | M001/S03 — 77 integration assertions, deriveState round-trip |
-| R007 | primary-user-loop | active | M001/S04 | none | unmapped |
+| R007 | primary-user-loop | validated | M001/S04 | none | M001/S04 — 37 assertions, full pipeline round-trip + deriveState |
 | R008 | failure-visibility | validated | M001/S01 | M001/S04 | M001/S01 (parser-side) |
 | R009 | quality-attribute | validated | M001/S02 | M001/S01 | M001/S02 — scenarios 2, 3, 7, 11; S01 for quick/codebase |
 | R010 | operability | deferred | none | none | unmapped |
@@ -163,7 +163,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 1
-- Mapped to slices: 1
-- Validated: 8 (R001, R002, R003, R004, R005, R006, R008, R009)
+- Active requirements: 0
+- Mapped to slices: 0
+- Validated: 9 (R001, R002, R003, R004, R005, R006, R007, R008, R009)
 - Unmapped active requirements: 0

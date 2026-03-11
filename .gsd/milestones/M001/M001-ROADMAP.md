@@ -28,7 +28,7 @@
 - [x] **S03: .gsd Directory Writer** `risk:medium` `depends:[S02]`
   > After this: given transformed data, the writer produces a complete .gsd directory tree that deriveState() can read — with correct naming conventions, file formats, and directory structure.
 
-- [ ] **S04: /gsd migrate Command** `risk:low` `depends:[S03]`
+- [x] **S04: /gsd migrate Command** `risk:low` `depends:[S03]`
   > After this: user can run `/gsd migrate /path/to/project`, see a preview of what will be migrated (file counts, milestone/slice/task summary, completion state), confirm, and get a valid .gsd directory written — the full pipeline from parse → transform → write integrated behind a single command.
 
 ## Boundary Map
