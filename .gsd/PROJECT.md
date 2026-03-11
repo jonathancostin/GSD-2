@@ -10,7 +10,7 @@ Enable users of the original get-shit-done system to upgrade to GSD-2 without lo
 
 ## Current State
 
-Milestone M001 in progress. S01 and S02 complete. The full parse→transform pipeline works: `parsePlanningDirectory()` reads any `.planning` dir into a typed `PlanningProject`, and `transformToGSD()` converts it into a typed `GSDProject` ready for writing. 92 transformer tests + 120 parser tests passing. S03 (writer) is next — it serializes `GSDProject` to a `.gsd/` directory tree that `deriveState()` can read.
+Milestone M001 in progress. S01, S02, and S03 complete. The full parse→transform→write pipeline works: `parsePlanningDirectory()` reads any `.planning` dir into a typed `PlanningProject`, `transformToGSD()` converts it into a typed `GSDProject`, and `writeGSDDirectory()` serializes it to a `.gsd/` directory tree that `deriveState()` reads back correctly. 120 parser + 92 transformer + 156 writer/integration tests all passing. S04 (the `/gsd migrate` CLI command with preview and confirmation) is next.
 
 ## Constraints
 

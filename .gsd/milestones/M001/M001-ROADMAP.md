@@ -25,7 +25,7 @@
 - [x] **S02: Structure Mapper and Content Transformer** `risk:high` `depends:[S01]`
   > After this: unit tests prove that parsed old-format data transforms into valid GSD-2 structures — phases become slices, plans become tasks, completion state is preserved, research is consolidated, requirements are classified, and the output matches GSD-2 template shapes.
 
-- [ ] **S03: .gsd Directory Writer** `risk:medium` `depends:[S02]`
+- [x] **S03: .gsd Directory Writer** `risk:medium` `depends:[S02]`
   > After this: given transformed data, the writer produces a complete .gsd directory tree that deriveState() can read — with correct naming conventions, file formats, and directory structure.
 
 - [ ] **S04: /gsd migrate Command** `risk:low` `depends:[S03]`

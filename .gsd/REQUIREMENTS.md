@@ -4,16 +4,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Active
 
-### R006 — Write complete .gsd directory structure
-- Class: core-capability
-- Status: active
-- Description: Generate the full `.gsd/` tree: PROJECT.md, REQUIREMENTS.md, DECISIONS.md, STATE.md, and milestone directories with roadmap, context, research, slice directories with plans, summaries, UATs, and task directories with task plans and summaries.
-- Why it matters: The output must be structurally valid for GSD-2 to pick up and continue working.
-- Source: user
-- Primary owning slice: M001/S03
-- Supporting slices: none
-- Validation: unmapped
-- Notes: Must match the exact naming convention (bare ID dirs, ID-SUFFIX files).
+
 
 ### R007 — /gsd migrate command with preview
 - Class: primary-user-loop
@@ -27,6 +18,17 @@ This file is the explicit capability and coverage contract for the project.
 - Notes: Preview should show enough to build confidence without overwhelming.
 
 ## Validated
+
+### R006 — Write complete .gsd directory structure
+- Class: core-capability
+- Status: validated
+- Description: Generate the full `.gsd/` tree: PROJECT.md, REQUIREMENTS.md, DECISIONS.md, STATE.md, and milestone directories with roadmap, context, research, slice directories with plans, summaries, UATs, and task directories with task plans and summaries.
+- Why it matters: The output must be structurally valid for GSD-2 to pick up and continue working.
+- Source: user
+- Primary owning slice: M001/S03
+- Supporting slices: none
+- Validation: M001/S03 — 77-assertion integration test proves: complete `.gsd/` tree written to temp dir, `parseRoadmap`/`parsePlan`/`parseSummary` parse key files with correct field values, `deriveState()` returns `phase: 'executing'` with correct active milestone/slice/task and progress counts. Null research and empty requirements correctly omitted.
+- Notes: Must match the exact naming convention (bare ID dirs, ID-SUFFIX files).
 
 ### R001 — Parse old .planning directory structure
 - Class: core-capability
@@ -151,7 +153,7 @@ This file is the explicit capability and coverage contract for the project.
 | R003 | core-capability | validated | M001/S02 | M001/S03 | M001/S02 — 92 assertions, scenarios 6, 9, 12-14 |
 | R004 | primary-user-loop | validated | M001/S02 | none | M001/S02 — scenario 4 |
 | R005 | continuity | validated | M001/S02 | none | M001/S02 — scenarios 5, 15 |
-| R006 | core-capability | active | M001/S03 | none | unmapped |
+| R006 | core-capability | validated | M001/S03 | none | M001/S03 — 77 integration assertions, deriveState round-trip |
 | R007 | primary-user-loop | active | M001/S04 | none | unmapped |
 | R008 | failure-visibility | validated | M001/S01 | M001/S04 | M001/S01 (parser-side) |
 | R009 | quality-attribute | validated | M001/S02 | M001/S01 | M001/S02 — scenarios 2, 3, 7, 11; S01 for quick/codebase |
@@ -161,7 +163,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 2
-- Mapped to slices: 2
-- Validated: 7 (R001, R002, R003, R004, R005, R008, R009)
+- Active requirements: 1
+- Mapped to slices: 1
+- Validated: 8 (R001, R002, R003, R004, R005, R006, R008, R009)
 - Unmapped active requirements: 0

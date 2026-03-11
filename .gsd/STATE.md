@@ -2,7 +2,7 @@
 
 **Milestone:** M001 — .planning → .gsd Migration Tool
 **Phase:** summarizing
-**Current Slice:** S03 — .gsd Directory Writer
+**Current Slice:** S04 — /gsd migrate Command
 **Branch:** gsd/M001/S03
 
 ## Progress
