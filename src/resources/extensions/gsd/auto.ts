@@ -61,11 +61,11 @@ import {
   autoCommitCurrentBranch,
   ensureSliceBranch,
   getCurrentBranch,
+  getMainBranch,
   getSliceBranchName,
   parseSliceBranch,
   switchToMain,
   mergeSliceToMain,
-  getCurrentBranch,
 } from "./worktree.ts";
 import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 import { makeUI, GLYPH, INDENT } from "../shared/ui.js";
@@ -920,8 +920,9 @@ async function dispatchNextUnit(
             const mergeResult = mergeSliceToMain(
               basePath, branchMid, branchSid, sliceTitleForMerge,
             );
+            const targetBranch = getMainBranch(basePath);
             ctx.ui.notify(
-              `Merged ${mergeResult.branch} → main.`,
+              `Merged ${mergeResult.branch} → ${targetBranch}.`,
               "info",
             );
             // Re-derive state from main so downstream logic sees merged state

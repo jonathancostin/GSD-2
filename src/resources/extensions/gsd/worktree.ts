@@ -86,7 +86,31 @@ export function parseSliceBranch(branchName: string): {
   };
 }
 
+/**
+ * Get the "main" branch for GSD slice operations.
+ *
+ * In the main working tree: returns main/master (the repo's default branch).
+ * In a worktree: returns worktree/<name> — the worktree's own base branch.
+ *
+ * This is critical because git doesn't allow a branch to be checked out
+ * in more than one worktree. Slice branches merge into the worktree's base
+ * branch, and the worktree branch later merges into the real main via
+ * /worktree merge.
+ */
 export function getMainBranch(basePath: string): string {
+  // When inside a worktree, slice branches should merge into the worktree's
+  // own branch (worktree/<name>), not main — main is checked out by the
+  // parent working tree and git would refuse the checkout.
+  const wtName = detectWorktreeName(basePath);
+  if (wtName) {
+    const wtBranch = `worktree/${wtName}`;
+    // Verify the branch exists (it should — createWorktree made it)
+    const exists = runGit(basePath, ["show-ref", "--verify", `refs/heads/${wtBranch}`], { allowFailure: true });
+    if (exists) return wtBranch;
+    // Fallback: if the worktree branch is gone, we're in trouble but
+    // try to return what we're currently on rather than crashing into main
+  }
+
   const symbolic = runGit(basePath, ["symbolic-ref", "refs/remotes/origin/HEAD"], { allowFailure: true });
   if (symbolic) {
     const match = symbolic.match(/refs\/remotes\/origin\/(.+)$/);
