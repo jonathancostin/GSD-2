@@ -107,8 +107,9 @@ export function getMainBranch(basePath: string): string {
     // Verify the branch exists (it should — createWorktree made it)
     const exists = runGit(basePath, ["show-ref", "--verify", `refs/heads/${wtBranch}`], { allowFailure: true });
     if (exists) return wtBranch;
-    // Fallback: if the worktree branch is gone, we're in trouble but
-    // try to return what we're currently on rather than crashing into main
+    // Worktree branch is gone — return current branch rather than falling
+    // through to main/master which would cause a checkout conflict
+    return runGit(basePath, ["branch", "--show-current"]);
   }
 
   const symbolic = runGit(basePath, ["symbolic-ref", "refs/remotes/origin/HEAD"], { allowFailure: true });
