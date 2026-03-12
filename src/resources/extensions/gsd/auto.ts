@@ -62,6 +62,7 @@ import {
   ensureSliceBranch,
   getCurrentBranch,
   getSliceBranchName,
+  parseSliceBranch,
   switchToMain,
   mergeSliceToMain,
   getCurrentBranch,
@@ -902,10 +903,10 @@ async function dispatchNextUnit(
   //   - complete-milestone runs on a slice branch (last slice bypass)
   {
     const currentBranch = getCurrentBranch(basePath);
-    const branchMatch = currentBranch.match(/^gsd\/(M\d+)\/(S\d+)$/);
-    if (branchMatch) {
-      const branchMid = branchMatch[1]!;
-      const branchSid = branchMatch[2]!;
+    const parsedBranch = parseSliceBranch(currentBranch);
+    if (parsedBranch) {
+      const branchMid = parsedBranch.milestoneId;
+      const branchSid = parsedBranch.sliceId;
       // Check if this slice is marked done in the roadmap
       const roadmapFile = resolveMilestoneFile(basePath, branchMid, "ROADMAP");
       const roadmapContent = roadmapFile ? await loadFile(roadmapFile) : null;

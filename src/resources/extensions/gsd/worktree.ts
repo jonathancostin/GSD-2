@@ -13,6 +13,7 @@
 
 import { existsSync } from "node:fs";
 import { execSync } from "node:child_process";
+import { sep } from "node:path";
 
 export interface MergeSliceResult {
   branch: string;
@@ -34,8 +35,55 @@ function runGit(basePath: string, args: string[], options: { allowFailure?: bool
   }
 }
 
-export function getSliceBranchName(milestoneId: string, sliceId: string): string {
+/**
+ * Detect the active worktree name from the current working directory.
+ * Returns null if not inside a GSD worktree (.gsd/worktrees/<name>/).
+ */
+export function detectWorktreeName(basePath: string): string | null {
+  const marker = `${sep}.gsd${sep}worktrees${sep}`;
+  const idx = basePath.indexOf(marker);
+  if (idx === -1) return null;
+  const afterMarker = basePath.slice(idx + marker.length);
+  const name = afterMarker.split(sep)[0] ?? afterMarker.split("/")[0];
+  return name || null;
+}
+
+/**
+ * Get the slice branch name, namespaced by worktree when inside one.
+ *
+ * In the main tree:     gsd/<milestoneId>/<sliceId>
+ * In a worktree:        gsd/<worktreeName>/<milestoneId>/<sliceId>
+ *
+ * This prevents branch conflicts when multiple worktrees work on the
+ * same milestone/slice IDs — git doesn't allow a branch to be checked
+ * out in more than one worktree simultaneously.
+ */
+export function getSliceBranchName(milestoneId: string, sliceId: string, worktreeName?: string | null): string {
+  if (worktreeName) {
+    return `gsd/${worktreeName}/${milestoneId}/${sliceId}`;
+  }
   return `gsd/${milestoneId}/${sliceId}`;
+}
+
+/** Regex that matches both plain and worktree-namespaced slice branches. */
+export const SLICE_BRANCH_RE = /^gsd\/(?:([a-zA-Z0-9_-]+)\/)?(M\d+)\/(S\d+)$/;
+
+/**
+ * Parse a slice branch name into its components.
+ * Handles both `gsd/M001/S01` and `gsd/myworktree/M001/S01`.
+ */
+export function parseSliceBranch(branchName: string): {
+  worktreeName: string | null;
+  milestoneId: string;
+  sliceId: string;
+} | null {
+  const match = branchName.match(SLICE_BRANCH_RE);
+  if (!match) return null;
+  return {
+    worktreeName: match[1] ?? null,
+    milestoneId: match[2]!,
+    sliceId: match[3]!,
+  };
 }
 
 export function getMainBranch(basePath: string): string {
@@ -70,10 +118,12 @@ function branchExists(basePath: string, branch: string): boolean {
 /**
  * Ensure the slice branch exists and is checked out.
  * Creates the branch from main if it doesn't exist.
+ * When inside a worktree, the branch is namespaced to avoid conflicts.
  * Returns true if the branch was newly created.
  */
 export function ensureSliceBranch(basePath: string, milestoneId: string, sliceId: string): boolean {
-  const branch = getSliceBranchName(milestoneId, sliceId);
+  const wtName = detectWorktreeName(basePath);
+  const branch = getSliceBranchName(milestoneId, sliceId, wtName);
   const current = getCurrentBranch(basePath);
 
   if (current === branch) return false;
@@ -143,7 +193,8 @@ export function switchToMain(basePath: string): void {
 export function mergeSliceToMain(
   basePath: string, milestoneId: string, sliceId: string, sliceTitle: string,
 ): MergeSliceResult {
-  const branch = getSliceBranchName(milestoneId, sliceId);
+  const wtName = detectWorktreeName(basePath);
+  const branch = getSliceBranchName(milestoneId, sliceId, wtName);
   const mainBranch = getMainBranch(basePath);
 
   const current = getCurrentBranch(basePath);
@@ -174,19 +225,21 @@ export function mergeSliceToMain(
 
 /**
  * Check if we're currently on a slice branch (not main).
+ * Handles both plain (gsd/M001/S01) and worktree-namespaced (gsd/wt/M001/S01) branches.
  */
 export function isOnSliceBranch(basePath: string): boolean {
   const current = getCurrentBranch(basePath);
-  return current.startsWith("gsd/");
+  return SLICE_BRANCH_RE.test(current);
 }
 
 /**
  * Get the active slice branch name, or null if on main.
+ * Handles both plain and worktree-namespaced branch patterns.
  */
 export function getActiveSliceBranch(basePath: string): string | null {
   try {
     const current = getCurrentBranch(basePath);
-    return current.startsWith("gsd/") ? current : null;
+    return SLICE_BRANCH_RE.test(current) ? current : null;
   } catch {
     return null;
   }
