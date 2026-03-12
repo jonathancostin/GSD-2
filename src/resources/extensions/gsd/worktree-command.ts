@@ -500,7 +500,7 @@ const GREEN  = "\x1b[32m";
 const RED    = "\x1b[31m";
 const YELLOW = "\x1b[33m";
 const WHITE  = "\x1b[37m";
-const BLUE   = "\x1b[34m";
+
 const MAGENTA = "\x1b[35m";
 
 // Semantic aliases for consistent use across all handlers
